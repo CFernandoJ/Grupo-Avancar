@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aba Evolução - Grupo Avançar</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="navbar-logo">
+        <img src="./grupo-avancar.webp" alt="Grupo Avançar">
+    </div>
+    <div class="navbar-tabs">
+        <a href="index.html" class="navbar-tab">Visão Geral</a>
+        <a href="evolucao.html" class="navbar-tab ativo">Aba Evolução</a>
+    </div>
+</nav>
+
+<div class="container">
+
+    <!-- KPIs -->
+    <div class="kpis">
+        <div class="card"><h3>Faturamento Realizado</h3><p id="kpi-faturamento" class="kpi-valor-sucesso">R$ 0,00</p></div>
+        <div class="card"><h3>Vendas Fechadas</h3><p id="kpi-clientes">0</p></div>
+        <div class="card"><h3>Reuniões Concluídas</h3><p id="kpi-reunioes">0</p></div>
+        <div class="card"><h3>Conversão Comercial</h3><p id="kpi-conversao">0%</p></div>
+    </div>
+
+    <!-- FORMULÁRIO DE METAS -->
+    <div class="form-cadastro" style="margin-bottom: 30px;">
+        <h2>Metas Mensais</h2>
+        <form id="form-meta" onsubmit="salvarMeta(event)">
+            <div class="grid-inputs">
+                <div class="campo-input"><label>Mês</label>
+                    <select id="meta-mes" required onchange="carregarMetaMes()">
+                        <option value="Janeiro">Janeiro</option><option value="Fevereiro">Fevereiro</option>
+                        <option value="Março">Março</option><option value="Abril">Abril</option>
+                        <option value="Maio">Maio</option><option value="Junho">Junho</option>
+                        <option value="Julho">Julho</option><option value="Agosto">Agosto</option>
+                        <option value="Setembro">Setembro</option><option value="Outubro">Outubro</option>
+                        <option value="Novembro">Novembro</option><option value="Dezembro">Dezembro</option>
+                    </select>
+                </div>
+                <div class="campo-input"><label>Meta (R$)</label>
+                    <input type="text" inputmode="numeric" id="meta-faturamento" placeholder="R$ 0,00" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-principal" style="width: auto; padding: 14px 36px;">Definir Meta</button>
+        </form>
+    </div>
+
+    <!-- GRÁFICOS DE EVOLUÇÃO -->
+    <div class="grid-graficos">
+        <div class="grafico-container">
+            <h3>Faturamento Fechado: Evolução Anual</h3>
+            <canvas id="evoChartVendas" style="max-height: 280px;"></canvas>
+        </div>
+        <div class="grafico-container">
+            <h3>Reuniões Realizadas vs No-Show</h3>
+            <canvas id="evoChartReunioes" style="max-height: 280px;"></canvas>
+        </div>
+    </div>
+
+    <div class="grafico-container" style="margin-top: 25px;">
+        <h3>Faturamento Realizado vs Meta Mensal</h3>
+        <canvas id="evoChartMetas" style="max-height: 280px;"></canvas>
+    </div>
+
+    <div class="card-feedback">
+        <h4>Feedback Automatizado de Rendimento</h4>
+        <p id="texto-feedback">Insira dados de faturamento e reuniões mensais para consolidar o relatório inteligente de performance.</p>
+    </div>
+
+</div>
+
+<script>
+    // DADOS
+    let dadosVendas = [];
+    let dadosReunioes = {};
+    let dadosNoShow = {};
+    let dadosMetas = {};
+    const mesesDefault = {
+        'Janeiro': 0, 'Fevereiro': 0, 'Março': 0, 'Abril': 0, 'Maio': 0, 'Junho': 0,
+        'Julho': 0, 'Agosto': 0, 'Setembro': 0, 'Outubro': 0, 'Novembro': 0, 'Dezembro': 0
+    };
+
+    try {
+        const s = localStorage.getItem('vendas_grupo_avancar_oficial');
+        if (s) dadosVendas = JSON.parse(s);
+    } catch(e) {}
+
+    try {
+        const s = localStorage.getItem('reunioes_grupo_avancar_oficial');
+        dadosReunioes = s ? JSON.parse(s) : {...mesesDefault};
+    } catch(e) { dadosReunioes = {...mesesDefault}; }
+
+    try {
+        const s = localStorage.getItem('noshow_grupo_avancar_oficial');
+        dadosNoShow = s ? JSON.parse(s) : {...mesesDefault};
+    } catch(e) { dadosNoShow = {...mesesDefault}; }
+
+    try {
+        const s = localStorage.getItem('metas_grupo_avancar_oficial');
+        dadosMetas = {...mesesDefault};
+        if (s) {
+            const parsed = JSON.parse(s);
+            ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].forEach(m => {
+                const v = parsed[m];
+                dadosMetas[m] = (v && typeof v === 'object') ? (v.faturamento || 0) : (v || 0);
+            });
+        }
+    } catch(e) { dadosMetas = {...mesesDefault}; }
+
+    const listaMeses  = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const siglasMeses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+    let evoVendasObj, evoReunioesObj, evoMetasObj;
+
+    // MÁSCARA
+    function mascaraMoeda(e) {
+        const digits = e.target.value.replace(/\D/g, '');
+        if (!digits) { e.target.value = ''; return; }
+        const valor = parseInt(digits, 10) / 100;
+        e.target.value = 'R$ ' + valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    document.getElementById('meta-faturamento').addEventListener('input', mascaraMoeda);
+
+    // METAS
+    function carregarMetaMes() {
+        const mes = document.getElementById('meta-mes').value;
+        const valor = dadosMetas[mes] || 0;
+        document.getElementById('meta-faturamento').value = valor > 0
+            ? 'R$ ' + valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : '';
+    }
+
+    function salvarMeta(e) {
+        e.preventDefault();
+        const mes = document.getElementById('meta-mes').value;
+        dadosMetas[mes] = parseFloat(
+            document.getElementById('meta-faturamento').value
+                .replace(/R\$\s?/g, '').replace(/\./g, '').replace(',', '.')
+        ) || 0;
+        localStorage.setItem('metas_grupo_avancar_oficial', JSON.stringify(dadosMetas));
+        renderizarEvolucao();
+    }
+
+    // AUXILIARES
+    function obterValoresPorStatus(status) {
+        return listaMeses.map(m => dadosVendas.filter(d => d.mes === m && d.status === status).reduce((acc, curr) => acc + curr.valor, 0));
+    }
+    function obterTotaisReunioesMensais()  { return listaMeses.map(m => dadosReunioes[m] || 0); }
+    function obterTotaisNoShowMensais()    { return listaMeses.map(m => dadosNoShow[m]   || 0); }
+    function obterMetasFaturamentoMensais(){ return listaMeses.map(m => dadosMetas[m]    || 0); }
+
+    // FEEDBACK
+    function gerarFeedbackComercial(faturamento, totalFechado, totalReunioes) {
+        const conversao  = totalReunioes > 0 ? ((totalFechado / totalReunioes) * 100) : 0;
+        const negociando = dadosVendas.filter(d => d.status === 'Em Negociação').length;
+
+        let insight = `Volume financeiro gerado com sucesso: ${faturamento.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})} através de ${totalFechado} vendas fechadas.<br><br>`;
+
+        if (totalReunioes === 0) return insight + "Forneça a quantidade de reuniões mensais para habilitar a análise de conversão comercial estruturada.";
+
+        insight += `Métrica de assertividade: ${conversao.toFixed(1)}% em relação a ${totalReunioes} reuniões protocoladas.<br><br>`;
+
+        if (conversao >= 20)     insight += "O rendimento operacional do período está indicando ALTA PERFORMANCE. A qualificação dos leads está garantindo excelente aproveitamento no fechamento.";
+        else if (conversao >= 10) insight += "O pipeline está ESTÁVEL. O fluxo de negociações mantém uma taxa de conversão constante, garantindo previsibilidade de receita.";
+        else                      insight += "AVISO OPERACIONAL: O fluxo de agendamentos está desbalanceado em relação aos fechamentos concluídos. Recomenda-se revisão imediata do processo de qualificação de reuniões.";
+
+        if (negociando > 0) insight += `<br><br>Status do Funil: Atualmente, a operação conta com ${negociando} leads em negociação ativa.`;
+        return insight;
+    }
+
+    // RENDER
+    function renderizarEvolucao() {
+        const faturamentoFechado = dadosVendas.filter(d => d.status === 'Fechado').reduce((acc, curr) => acc + curr.valor, 0);
+        const totalFechado       = dadosVendas.filter(d => d.status === 'Fechado').length;
+        const totalReunioes      = listaMeses.reduce((acc, m) => acc + (dadosReunioes[m] || 0), 0);
+        const taxaConversao      = totalReunioes > 0 ? ((totalFechado / totalReunioes) * 100).toFixed(1) : 0;
+
+        document.getElementById('kpi-faturamento').innerText = faturamentoFechado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        document.getElementById('kpi-clientes').innerText    = totalFechado;
+        document.getElementById('kpi-reunioes').innerText    = totalReunioes;
+        document.getElementById('kpi-conversao').innerText   = `${taxaConversao}%`;
+        document.getElementById('texto-feedback').innerHTML  = gerarFeedbackComercial(faturamentoFechado, totalFechado, totalReunioes);
+
+        if (evoVendasObj) evoVendasObj.destroy();
+        evoVendasObj = new Chart(document.getElementById('evoChartVendas').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: siglasMeses,
+                datasets: [{ label: 'Faturamento Fechado', data: obterValoresPorStatus('Fechado'), borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 3, pointBackgroundColor: '#10b981', fill: true, tension: 0.3 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#ffffff' } }, x: { ticks: { color: '#ffffff' } } } }
+        });
+
+        if (evoReunioesObj) evoReunioesObj.destroy();
+        evoReunioesObj = new Chart(document.getElementById('evoChartReunioes').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: siglasMeses,
+                datasets: [
+                    { label: 'Reuniões Protocoladas', data: obterTotaisReunioesMensais(), backgroundColor: '#f59e0b', borderRadius: 4 },
+                    { label: 'NO-SHOW',               data: obterTotaisNoShowMensais(),   backgroundColor: '#ef4444', borderRadius: 4 }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: '#ffffff' } } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#ffffff', stepSize: 1 } }, x: { ticks: { color: '#ffffff' } } } }
+        });
+
+        if (evoMetasObj) evoMetasObj.destroy();
+        evoMetasObj = new Chart(document.getElementById('evoChartMetas').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: siglasMeses,
+                datasets: [
+                    { label: 'Faturamento Realizado', data: obterValoresPorStatus('Fechado'),    backgroundColor: 'rgba(16, 185, 129, 0.7)', borderRadius: 4, order: 2 },
+                    { label: 'Meta de Faturamento',   data: obterMetasFaturamentoMensais(), type: 'line', borderColor: '#ffffff', backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 3], pointBackgroundColor: '#ffffff', pointRadius: 4, fill: false, tension: 0.3, order: 1 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: true, labels: { color: '#ffffff' } } },
+                scales: {
+                    y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#ffffff', callback: v => 'R$ ' + v.toLocaleString('pt-BR') } },
+                    x: { ticks: { color: '#ffffff' } }
+                }
+            }
+        });
+    }
+
+    // INICIALIZAR
+    carregarMetaMes();
+    renderizarEvolucao();
+</script>
+</body>
+</html>
