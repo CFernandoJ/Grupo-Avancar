@@ -76,12 +76,12 @@
                     <h2>Listagem de Clientes e Status Ativos</h2>
                     <button class="btn-adicionar" onclick="abrirModalLead()">Adicionar Lead +</button>
                 </div>
-                <table id="tabela-clientes">
-                    <thead>
-                        <tr><th>Mês</th><th>Cliente</th><th>Telefone</th><th>Origem</th><th>Status</th><th>Valor</th><th>Ação</th></tr>
-                    </thead>
-                    <tbody id="corpo-tabela"></tbody>
-                </table>
+                <div class="filtros-tabela">
+                    <button class="btn-filtro-status ativo" onclick="filtrarStatusTabela(this, 'Todos')">Todos</button>
+                    <button class="btn-filtro-status" onclick="filtrarStatusTabela(this, 'Fechado')">✓ Fechado</button>
+                    <button class="btn-filtro-status" onclick="filtrarStatusTabela(this, 'Em Negociação')">⏳ Em Negociação</button>
+                </div>
+                <div class="lead-lista" id="corpo-tabela"></div>
             </div>
             <div class="tabela-container">
                 <h2 style="margin-bottom: 20px;">Resumo de Agendamentos</h2>
@@ -124,7 +124,17 @@
                 </div>
             </div>
             <div class="grid-inputs">
+                <div class="campo-input"><label>Termômetro</label>
+                    <select id="input-termometro">
+                        <option value="">— Selecionar —</option>
+                        <option value="Quente">🔥 Quente</option>
+                        <option value="Morno">🌡️ Morno</option>
+                        <option value="Frio">❄️ Frio</option>
+                    </select>
+                </div>
                 <div class="campo-input"><label>Telefone</label><input type="text" inputmode="numeric" id="input-tel" placeholder="(00) 00000-0000"></div>
+            </div>
+            <div class="grid-inputs">
                 <div class="campo-input"><label>Valor (R$)</label><input type="text" inputmode="numeric" id="input-valor" placeholder="R$ 0,00" required></div>
             </div>
             <div class="grid-inputs completo">
@@ -249,6 +259,7 @@
             mes: document.getElementById('input-mes').value,
             cliente: document.getElementById('input-nome').value,
             status: document.getElementById('input-status').value,
+            termometro: document.getElementById('input-termometro').value,
             tel: document.getElementById('input-tel').value,
             data: document.getElementById('input-data').value,
             valor: parseFloat(document.getElementById('input-valor').value.replace(/R\$\s?/g, '').replace(/\./g, '').replace(',', '.')) || 0,
@@ -288,7 +299,33 @@
 
     // FILTROS
     let filtroAtual = 'Todos';
+    let filtroStatusAtual = 'Todos';
     let graficoVendasObj, graficoReunioesObj;
+
+    function filtrarStatusTabela(btn, status) {
+        filtroStatusAtual = status;
+        document.querySelectorAll('.btn-filtro-status').forEach(b => b.classList.remove('ativo'));
+        if (btn) btn.classList.add('ativo');
+        atualizarTela();
+    }
+
+    function alterarTermometro(id) {
+        const registro = dadosVendas.find(item => item.id === id);
+        if (!registro) return;
+        const ciclo = ['Frio', 'Morno', 'Quente', ''];
+        const idx = ciclo.indexOf(registro.termometro || '');
+        registro.termometro = ciclo[(idx + 1) % ciclo.length];
+        localStorage.setItem('vendas_grupo_avancar_oficial', JSON.stringify(dadosVendas));
+        atualizarTela();
+    }
+
+    function badgeTermometro(valor, id) {
+        const acao = `onclick="alterarTermometro(${id})" title="Clique para alterar"`;
+        if (!valor) return `<span style="opacity:0.25;cursor:pointer;font-size:16px;line-height:1;" ${acao}>＋</span>`;
+        const map = { 'Quente': ['termometro-quente', '🔥 Quente'], 'Morno': ['termometro-morno', '🌡️ Morno'], 'Frio': ['termometro-frio', '❄️ Frio'] };
+        const [cls, label] = map[valor] || ['', valor];
+        return `<span class="badge ${cls} clicavel" ${acao}>${label}</span>`;
+    }
     const listaMeses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     const siglasMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -321,23 +358,35 @@
         document.getElementById('kpi-reunioes').innerText  = totalReunioes;
         document.getElementById('kpi-conversao').innerText = `${taxaConversao}%`;
 
-        // Tabela clientes
+        // Lead cards (com filtro de status)
         const corpoTabela = document.getElementById('corpo-tabela');
         corpoTabela.innerHTML = '';
-        vendasFiltradas.forEach(d => {
-            const classeBadge   = d.status === 'Fechado' ? 'fechado' : 'negociacao';
+        const vendasExibidas = filtroStatusAtual === 'Todos'
+            ? vendasFiltradas
+            : vendasFiltradas.filter(d => d.status === filtroStatusAtual);
+        if (vendasExibidas.length === 0) {
+            corpoTabela.innerHTML = '<p class="lead-vazio">Nenhum lead encontrado.</p>';
+        }
+        vendasExibidas.forEach(d => {
+            const classeBadge    = d.status === 'Fechado' ? 'fechado' : 'negociacao';
             const valorFormatado = d.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            const telExibido    = d.tel.trim() === '' ? '---' : d.tel;
-            const origemExibida = d.origem && d.origem.trim() !== '' ? d.origem : '---';
-            corpoTabela.innerHTML += `<tr>
-                <td data-label="Mês">${d.mes.substring(0,3)}</td>
-                <td data-label="Cliente"><b>${d.cliente}</b></td>
-                <td data-label="Telefone">${telExibido}</td>
-                <td data-label="Origem">${origemExibida}</td>
-                <td data-label="Status"><span class="badge ${classeBadge} clicavel" onclick="alterarStatus(${d.id})" title="Clique para alterar o status">${d.status}</span></td>
-                <td data-label="Valor" class="valor-venda">${valorFormatado}</td>
-                <td data-label="Ação"><button class="btn-deletar" onclick="deletarCliente(${d.id})">Remover</button></td>
-            </tr>`;
+            const dataFmt = d.data ? (() => { const [,m,dia] = d.data.split('-'); return `${dia}/${m}`; })() : null;
+            const partes = [dataFmt, d.tel && d.tel.trim() ? d.tel : null, d.origem && d.origem.trim() ? d.origem : null].filter(Boolean);
+            const detalhe = partes.length > 0 ? partes.join(' · ') : '—';
+            corpoTabela.innerHTML += `
+                <div class="lead-card">
+                    <span class="lead-mes">${d.mes.substring(0,3)}</span>
+                    <div class="lead-info">
+                        <div class="lead-nome">${d.cliente}</div>
+                        <div class="lead-detalhe">${detalhe}</div>
+                    </div>
+                    <div class="lead-badges">
+                        ${badgeTermometro(d.termometro, d.id)}
+                        <span class="badge ${classeBadge} clicavel" onclick="alterarStatus(${d.id})" title="Clique para alterar o status">${d.status}</span>
+                    </div>
+                    <span class="lead-valor">${valorFormatado}</span>
+                    <button class="btn-deletar" onclick="deletarCliente(${d.id})">✕</button>
+                </div>`;
         });
 
         // Tabela reuniões com botão "+" por mês

@@ -169,6 +169,23 @@ td.valor-venda { font-weight: 600; }
 }
 .btn-fechar-modal:hover { color: var(--branco); }
 
+/* --- TERMÔMETRO --- */
+.badge.termometro-quente { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; }
+.badge.termometro-morno  { background-color: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; }
+.badge.termometro-frio   { background-color: rgba(96, 165, 250, 0.15); color: #60a5fa; border: 1px solid #60a5fa; }
+
+/* --- FILTROS DE STATUS DA TABELA --- */
+.filtros-tabela { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.btn-filtro-status {
+    background: transparent; border: 1px solid var(--borda-suave);
+    color: rgba(255,255,255,0.55);
+    padding: 5px 14px; border-radius: 20px; cursor: pointer;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+    transition: all 0.2s;
+}
+.btn-filtro-status:hover { color: var(--branco); }
+.btn-filtro-status.ativo { background: rgba(255,255,255,0.12); color: var(--branco); border-color: rgba(255,255,255,0.4); }
+
 /* --- RESPONSIVE --- */
 @media (max-width: 1024px) {
     .kpis { grid-template-columns: repeat(2, 1fr); }
@@ -188,23 +205,28 @@ td.valor-venda { font-weight: 600; }
     .tabela-container { padding: 16px; }
     .campo-input input, .campo-input select { font-size: 16px; }
 }
+/* --- LEAD CARDS --- */
+.lead-lista { display: flex; flex-direction: column; }
+.lead-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--borda-suave);
+}
+.lead-card:last-child { border-bottom: none; }
+.lead-mes {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    color: #a1a1aa; min-width: 30px; text-align: center; flex-shrink: 0;
+}
+.lead-info { flex: 1; min-width: 0; }
+.lead-nome { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lead-detalhe { font-size: 12px; color: #a1a1aa; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lead-badges { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.lead-valor { font-weight: 700; font-size: 14px; white-space: nowrap; flex-shrink: 0; min-width: 90px; text-align: right; }
+.lead-vazio { opacity: 0.35; text-align: center; padding: 24px 0; font-size: 14px; }
+
 @media (max-width: 600px) {
-    #tabela-clientes thead { display: none; }
-    #tabela-clientes, #tabela-clientes tbody { display: block; width: 100%; }
-    #tabela-clientes tr {
-        display: block; margin-bottom: 12px;
-        border: 1px solid var(--borda-suave); border-radius: 8px;
-        padding: 12px 14px; background: rgba(255,255,255,0.03);
-    }
-    #tabela-clientes td {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px;
-    }
-    #tabela-clientes td:last-child { border-bottom: none; }
-    #tabela-clientes td::before {
-        content: attr(data-label); font-weight: 700; text-transform: uppercase;
-        font-size: 10px; color: #a1a1aa; flex-shrink: 0; min-width: 72px; margin-right: 8px;
-    }
+    .lead-card { flex-wrap: wrap; gap: 8px; padding: 12px 0; }
+    .lead-valor { min-width: auto; }
 }
 @media (max-width: 480px) {
     .container { padding: 16px 12px; }
