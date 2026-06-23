@@ -124,12 +124,14 @@
                 </div>
             </div>
             <div class="grid-inputs">
-                <div class="campo-input"><label>Termômetro</label>
+                <div class="campo-input"><label>Etapa da Negociação</label>
                     <select id="input-termometro">
                         <option value="">— Selecionar —</option>
-                        <option value="Quente">🔥 Quente</option>
-                        <option value="Morno">🌡️ Morno</option>
-                        <option value="Frio">❄️ Frio</option>
+                        <option value="20">20% · Reunião realizada</option>
+                        <option value="40">40% · Proposta enviada</option>
+                        <option value="60">60% · OK do cliente</option>
+                        <option value="70">70% · Formulário preenchido</option>
+                        <option value="80">80% · Assinatura de contrato</option>
                     </select>
                 </div>
                 <div class="campo-input"><label>Telefone</label><input type="text" inputmode="numeric" id="input-tel" placeholder="(00) 00000-0000"></div>
@@ -293,6 +295,7 @@
         const registro = dadosVendas.find(item => item.id === id);
         if (!registro) return;
         registro.status = registro.status === 'Fechado' ? 'Em Negociação' : 'Fechado';
+        if (registro.status === 'Fechado') registro.termometro = '';
         localStorage.setItem('vendas_grupo_avancar_oficial', JSON.stringify(dadosVendas));
         atualizarTela();
     }
@@ -309,10 +312,18 @@
         atualizarTela();
     }
 
+    const ETAPAS = [
+        { valor: '20', label: 'Reunião 20%',   classe: 'etapa-20', full: 'Reunião realizada' },
+        { valor: '40', label: 'Proposta 40%',  classe: 'etapa-40', full: 'Proposta enviada' },
+        { valor: '60', label: 'OK 60%',        classe: 'etapa-60', full: 'OK do cliente' },
+        { valor: '70', label: 'Formulário 70%',classe: 'etapa-70', full: 'Formulário preenchido' },
+        { valor: '80', label: 'Assinatura 80%',classe: 'etapa-80', full: 'Assinatura de contrato' },
+    ];
+
     function alterarTermometro(id) {
         const registro = dadosVendas.find(item => item.id === id);
         if (!registro) return;
-        const ciclo = ['Frio', 'Morno', 'Quente', ''];
+        const ciclo = [...ETAPAS.map(e => e.valor), ''];
         const idx = ciclo.indexOf(registro.termometro || '');
         registro.termometro = ciclo[(idx + 1) % ciclo.length];
         localStorage.setItem('vendas_grupo_avancar_oficial', JSON.stringify(dadosVendas));
@@ -320,11 +331,11 @@
     }
 
     function badgeTermometro(valor, id) {
-        const acao = `onclick="alterarTermometro(${id})" title="Clique para alterar"`;
-        if (!valor) return `<span style="opacity:0.25;cursor:pointer;font-size:16px;line-height:1;" ${acao}>＋</span>`;
-        const map = { 'Quente': ['termometro-quente', '🔥 Quente'], 'Morno': ['termometro-morno', '🌡️ Morno'], 'Frio': ['termometro-frio', '❄️ Frio'] };
-        const [cls, label] = map[valor] || ['', valor];
-        return `<span class="badge ${cls} clicavel" ${acao}>${label}</span>`;
+        const acao = `onclick="alterarTermometro(${id})"`;
+        if (!valor) return `<span style="opacity:0.25;cursor:pointer;font-size:16px;line-height:1;" ${acao} title="Definir etapa">＋</span>`;
+        const etapa = ETAPAS.find(e => e.valor === valor);
+        if (!etapa) return '';
+        return `<span class="badge ${etapa.classe} clicavel" ${acao} title="${etapa.full}">${etapa.label}</span>`;
     }
     const listaMeses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     const siglasMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -381,7 +392,7 @@
                         <div class="lead-detalhe">${detalhe}</div>
                     </div>
                     <div class="lead-badges">
-                        ${badgeTermometro(d.termometro, d.id)}
+                        ${d.status === 'Em Negociação' ? badgeTermometro(d.termometro, d.id) : ''}
                         <span class="badge ${classeBadge} clicavel" onclick="alterarStatus(${d.id})" title="Clique para alterar o status">${d.status}</span>
                     </div>
                     <span class="lead-valor">${valorFormatado}</span>
